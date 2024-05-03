@@ -208,13 +208,37 @@ class VMLineParser
         ]
     end
 
+    def label(name)
+        [
+            "(#{name})"
+        ]
+    end
+
+    def goto(label)
+        [
+            "@#{label}",
+            "0;JMP"
+        ]
+    end
+
+    def if_goto(label)
+        [
+            "@SP",
+            "M=M-1",
+            "A=M",
+            "D=M",
+            "@#{label}",
+            "D;JNE"
+        ]
+    end
+
     def parse_line(line, index)
         command, *args = line.split(" ")
+        command = command.gsub("-","_")
         if ["eq","lt","gt"].include?(command)
             to_asm = ["// #{line}"] + send(command, index)
         else
             to_asm = ["// #{line}"] + send(command, *args)
         end
-        to_asm.join("\n")
     end
 end
