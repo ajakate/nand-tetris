@@ -232,6 +232,85 @@ class VMLineParser
         ]
     end
 
+    def function(name, arg_size)
+        command = ["(#{name})"]
+        arg_size.to_i.times do
+            push_local_0 = push("local", "0")
+            command = command + push_local_0
+        end
+        command
+    end
+
+    def return()
+        [
+            # store endframe; LCL loc
+            "@LCL",
+            "D=M",
+            "@endframe",
+            "M=D",
+            # gets the return address, store in temp var
+            "@5",
+            "D=A",
+            "@endframe",
+            "D=M-D",
+            "@return_address",
+            "M=D",
+            # POP STACK, put in ARG0
+            "@SP",
+            "M=M-1",
+            "A=M",
+            "D=M",
+            "@ARG",
+            "A=M",
+            "M=D",
+            # SP = ARG + 1
+            "@ARG",
+            "D=M",
+            "@SP",
+            "M=D+1",
+            # push that
+            "@1",
+            "D=A",
+            "@endframe",
+            "D=M-D",
+            "A=D",
+            "D=M",
+            "@THAT",
+            "M=D",
+            # push this
+            "@2",
+            "D=A",
+            "@endframe",
+            "D=M-D",
+            "A=D",
+            "D=M",
+            "@THIS",
+            "M=D",
+            # push arg
+            "@3",
+            "D=A",
+            "@endframe",
+            "D=M-D",
+            "A=D",
+            "D=M",
+            "@ARG",
+            "M=D",
+            # push LCL
+            "@4",
+            "D=A",
+            "@endframe",
+            "D=M-D",
+            "A=D",
+            "D=M",
+            "@LCL",
+            "M=D",
+            # jump back
+            "@return_address",
+            "A=M",
+            "0;JMP"
+        ]
+    end
+
     def parse_line(line, index)
         command, *args = line.split(" ")
         command = command.gsub("-","_")
