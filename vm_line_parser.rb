@@ -82,7 +82,7 @@ class VMLineParser
         ]
     end
 
-    def pop(stack_name, value)
+    def pop(index, stack_name, value)
         
         if stack_name == 'temp'
             target_address = 5 + value.to_i
@@ -109,13 +109,13 @@ class VMLineParser
             "D=A",
             "@#{pointer}",
             "D=D+M",
-            "@target_address",
+            "@target_address_#{index}",
             "M=D",
             "@SP",
             "M=M-1",
             "A=M",
             "D=M",
-            "@target_address",
+            "@target_address_#{index}",
             "A=M",
             "M=D"
         ]
@@ -129,9 +129,6 @@ class VMLineParser
             "D=M",
             "A=A-1",
             command,
-            "D=A+1",
-            "@SP",
-            "M=D"
         ]
     end
 
@@ -193,8 +190,7 @@ class VMLineParser
     def neg()
         [
             "@SP",
-            "A=M",
-            "A=A-1",
+            "A=M-1",
             "M=-M",
         ]
     end
@@ -202,8 +198,7 @@ class VMLineParser
     def not()
         [
             "@SP",
-            "A=M",
-            "A=A-1",
+            "A=M-1",
             "M=!M",
         ]
     end
@@ -235,7 +230,13 @@ class VMLineParser
     def function(name, arg_size)
         command = ["(#{name})"]
         arg_size.to_i.times do
-            push_local_0 = push("local", "0")
+            push_local_0 = [
+                "@SP",
+                "A=M",
+                "M=0",
+                "@SP",
+                "M=M+1"
+            ]
             command = command + push_local_0
         end
         command
@@ -250,9 +251,9 @@ class VMLineParser
             "M=D",
             # gets the return address, store in temp var
             "@5",
-            "D=A",
-            "@endframe",
-            "D=M-D",
+            "D=D-A",
+            "A=D",
+            "D=M",
             "@return_address",
             "M=D",
             # POP STACK, put in ARG0
@@ -265,14 +266,12 @@ class VMLineParser
             "M=D",
             # SP = ARG + 1
             "@ARG",
-            "D=M",
+            "D=M+1",
             "@SP",
-            "M=D+1",
+            "M=D",
             # push that
-            "@1",
-            "D=A",
             "@endframe",
-            "D=M-D",
+            "D=M-1",
             "A=D",
             "D=M",
             "@THAT",
@@ -311,11 +310,78 @@ class VMLineParser
         ]
     end
 
+    def call(index, name, arg_size)
+        return_address = "#{name}$ret.#{index}"
+        [
+            # push return address to stack
+            "@#{return_address}",
+            "D=A",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            # push LCL
+            "@LCL",
+            "D=M",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            # push ARG
+            "@ARG",
+            "D=M",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            # push THIS
+            "@THIS",
+            "D=M",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            # push THAT
+            "@THAT",
+            "D=M",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            # ARG = SP - 5 - nArgs
+            "@SP",
+            "D=M",
+            "@#{arg_size}",
+            "D=D-A",
+            "@5",
+            "D=D-A",
+            "@ARG",
+            "M=D",
+            # LCL = SP
+            "@SP",
+            "D=M",
+            "@LCL",
+            "M=D",
+            # goto function
+            "@#{name}",
+            "0;JMP",
+            # return address label
+            "(#{return_address})"
+        ]
+    end
+
     def parse_line(line, index)
         command, *args = line.split(" ")
         command = command.gsub("-","_")
         if ["eq","lt","gt"].include?(command)
             to_asm = ["// #{line}"] + send(command, index)
+        elsif ["call", "pop"].include?(command)
+            to_asm = ["// #{line}"] + send(command, index, *args)
         else
             to_asm = ["// #{line}"] + send(command, *args)
         end
