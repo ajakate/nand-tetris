@@ -8,7 +8,7 @@ class VMLineParser
         "that" => "THAT",
     }
 
-    def initialize(filename)
+    def initialize(filename = "nil.vm")
         @base_filename = filename.split("/")[-1][0..-4]
     end
 
@@ -83,7 +83,7 @@ class VMLineParser
     end
 
     def pop(index, stack_name, value)
-        
+
         if stack_name == 'temp'
             target_address = 5 + value.to_i
             return generic_pop(target_address)
@@ -162,10 +162,10 @@ class VMLineParser
             "D=0",
             "@END_#{i}",
             "0;JMP",
-            
+
             "(SET_TRUE_#{i})",
             "D=-1",
-            
+
             "(END_#{i})",
 
             "@SP",
